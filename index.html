@@ -436,6 +436,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+db.settings({ experimentalAutoDetectLongPolling: true });
 const COLLECTION_NAME = "risultati_quiz_ai_pa";
 
 // Codice di accesso alla dashboard — UNICO valore usato sia nell'URL
@@ -693,9 +694,31 @@ function showResults(){
   saveResultToFirestore();
 }
 
+const SAVE_TIMEOUT_MS = 12000;
+
+function backupResultLocally(){
+  try {
+    const backups = JSON.parse(localStorage.getItem("quiz_ai_pa_backup") || "[]");
+    backups.push({
+      nome: participant.nome,
+      cognome: participant.cognome,
+      ente: participant.ente,
+      punteggio: score,
+      totaleDomande: questions.length,
+      dettaglioRisposte: answerLog,
+      salvatoAlle: new Date().toISOString()
+    });
+    localStorage.setItem("quiz_ai_pa_backup", JSON.stringify(backups));
+  } catch (err) {
+    console.error("Errore backup locale:", err);
+  }
+}
+
 function saveResultToFirestore(){
   const statusEl = el("save-status");
-  db.collection(COLLECTION_NAME).add({
+  backupResultLocally();
+
+  const writePromise = db.collection(COLLECTION_NAME).add({
     nome: participant.nome,
     cognome: participant.cognome,
     ente: participant.ente,
@@ -703,14 +726,24 @@ function saveResultToFirestore(){
     totaleDomande: questions.length,
     dettaglioRisposte: answerLog,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  })
-  .then(() => {
-    statusEl.textContent = "Risultato salvato correttamente.";
-  })
-  .catch((err) => {
-    console.error("Errore salvataggio Firestore:", err);
-    statusEl.textContent = "⚠️ Non è stato possibile salvare il risultato. Segnala questo errore.";
   });
+
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("timeout")), SAVE_TIMEOUT_MS);
+  });
+
+  Promise.race([writePromise, timeoutPromise])
+    .then(() => {
+      statusEl.textContent = "Risultato salvato correttamente.";
+    })
+    .catch((err) => {
+      console.error("Errore salvataggio Firestore:", err);
+      if (err && err.message === "timeout") {
+        statusEl.textContent = "⚠️ Il salvataggio sta impiegando troppo tempo (probabile rete dell'ente che blocca la connessione). Il tuo risultato è stato comunque conservato in locale: segnala questo messaggio.";
+      } else {
+        statusEl.textContent = "⚠️ Non è stato possibile salvare il risultato. Segnala questo errore.";
+      }
+    });
 }
 
 /* ======================================================================
