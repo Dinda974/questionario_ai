@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionario Finale · Intelligenza Artificiale nella PA</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     FIREBASE — SDK compat (stessa versione usata nelle altre SPA)
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    /* Palette coerente con Laboratorio AI PA */
+    --blu: #1B3A6B;
+    --blu2: #2A5298;
+    --avorio: #F8F6F1;
+    --ambra: #C97D2E;
+    --verde: #2D6A4F;
+    --rosso: #C0392B;
+    --grigio: #6B7280;
+    --grigio-chiaro: #E8E4DC;
+    --bianco: #FFFFFF;
+    --ombra: 0 4px 24px rgba(27, 58, 107, 0.12);
+    --radius: 1rem;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--blu);
+    color: var(--blu);
+    min-height: 100vh;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content:center;
+    padding: 2rem 1rem;
+  }
+
+  .app-container{
+    width:100%;
+    max-width: 720px;
+  }
+
+  .card{
+    background: var(--bianco);
+    border: 1px solid var(--grigio-chiaro);
+    border-radius: var(--radius);
+    padding: 2.5rem;
+    box-shadow: var(--ombra);
+  }
+  h1{
+    font-size: 1.6rem;
+    background: linear-gradient(135deg, var(--blu) 0%, var(--blu2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 0.4rem;
+    line-height: 1.3;
+  }
+
+  .subtitle{
+    color: var(--grigio);
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+  }
+
+  .eyebrow{
+    font-family: "IBM Plex Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: 0.68rem;
+    color: var(--ambra);
+    margin-bottom: 0.6rem;
+  }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- FORM REGISTRAZIONE ---------- */
+  label{
+    display:block;
+    font-size: 0.85rem;
+    color: var(--grigio);
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  input[type="text"], input[type="password"]{
+    width:100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--grigio-chiaro);
+    background: var(--avorio);
+    color: var(--blu);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus{
+    border-color: var(--ambra);
+  }
+
+  .btn-primary{
+    margin-top: 2rem;
+    width:100%;
+    padding: 0.95rem 1.5rem;
+    border:none;
+    border-radius: 0.7rem;
+    background: var(--blu);
+    color: var(--bianco);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor:pointer;
+    transition: transform 0.15s, opacity 0.2s;
+  }
+  .btn-primary:hover{ transform: translateY(-1px); }
+  .btn-primary:disabled{ background: var(--blu2); opacity: 0.5; cursor:not-allowed; transform:none; }
+
+  .btn-secondary{
+    margin-top: 0.8rem;
+    width:100%;
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--grigio-chiaro);
+    background: transparent;
+    color: var(--grigio);
+    font-size: 0.9rem;
+    cursor:pointer;
+  }
+
+  .error-msg{
+    color: var(--rosso);
+    font-size: 0.85rem;
+    margin-top: 0.8rem;
+    min-height: 1.2em;
+  }
+
+  /* ---------- FEATURES (schermata iniziale) ---------- */
+  .features-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  .feature-card{
+    background: var(--avorio);
+    border: 1px solid var(--grigio-chiaro);
+    border-radius: 0.7rem;
+    padding: 1rem;
+  }
+  .feature-card h3{ font-size: 0.9rem; color: var(--blu); margin-bottom: 0.4rem; }
+  .feature-card p{ font-size: 0.78rem; color: var(--grigio); line-height: 1.4; }
+
+  /* ---------- QUIZ ---------- */
+  .progress-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 1.5rem;
+  }
+  .progress-label{
+    font-size: 0.8rem;
+    color: var(--grigio);
+  }
+  .progress-track{
+    flex:1;
+    height: 6px;
+    background: var(--grigio-chiaro);
+    border-radius: 999px;
+    margin-left: 1rem;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background: var(--ambra);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
+  .question-text{
+    font-size: 1.15rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
+  .option{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.7rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--grigio-chiaro);
+    background: var(--bianco);
+    color: var(--blu);
+    font-size: 0.95rem;
+    cursor:pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .option:hover:not(:disabled){
+    border-color: var(--blu2);
+  }
+  .option:disabled{ cursor:default; }
+  .option.correct{
+    border-color: var(--verde);
+    background: rgba(45, 106, 79, 0.08);
+  }
+  .option.incorrect{
+    border-color: var(--rosso);
+    background: rgba(192, 57, 43, 0.08);
+  }
+
+  .explanation-box{
+    margin-top: 1.2rem;
+    padding: 1rem 1.2rem;
+    border-radius: 0.7rem;
+    background: rgba(201, 125, 46, 0.08);
+    border: 1px solid rgba(201, 125, 46, 0.2);
+    font-size: 0.9rem;
+    color: #7a4a10;
+    line-height: 1.5;
+  }
+  .explanation-box strong{ color: var(--blu); }
+
+  /* ---------- RISULTATI ---------- */
+  .score-circle{
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: var(--blu);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin: 0 auto 1.5rem auto;
+    flex-direction:column;
+  }
+  .score-circle .score-num{
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--bianco);
+  }
+  .score-circle .score-den{
+    font-size: 0.85rem;
+    color: rgba(248, 246, 241, 0.85);
+  }
+
+  .level-badge{
+    text-align:center;
+    font-weight:600;
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+  }
+  .level-badge.excellent{ color: var(--verde); }
+  .level-badge.good{ color: #93c5fd; }
+  .level-badge.sufficient{ color: var(--ambra); }
+  .level-badge.review{ color: var(--rosso); }
+
+  .recommendation{
+    text-align:center;
+    color: var(--grigio);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+  }
+
+  .save-status{
+    text-align:center;
+    font-size: 0.8rem;
+    color: var(--grigio);
+    margin-top: 0.5rem;
+  }
+
+  /* ---------- DASHBOARD ---------- */
+  .dash-wrapper{ max-width: 1000px; }
+  table{
+    width:100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+  }
+  th, td{
+    text-align:left;
+    padding: 0.7rem 0.6rem;
+    border-bottom: 1px solid var(--grigio-chiaro);
+  }
+  th{
+    color: var(--grigio);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+  .dash-actions{
+    display:flex;
+    gap: 0.8rem;
+    margin-top: 1.5rem;
+  }
+  .dash-actions .btn-primary, .dash-actions .btn-secondary{ margin-top:0; }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    text-align:center;
+    color: rgba(248, 246, 241, 0.7);
+    font-size: 0.78rem;
+    margin-top: 1.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.03em;
+  }
+
+  @media (max-width: 600px){
+    .card{ padding: 1.6rem; }
+    h1{ font-size: 1.35rem; }
+    .score-circle{ width: 110px; height:110px; }
+    .score-circle .score-num{ font-size: 1.7rem; }
+    table{ font-size: 0.75rem; }
+    .features-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container" id="app-container">
+
+  <!-- ============ SCHERMATA 0 · LANDING PAGE ============ -->
+  <div id="screen-landing" class="card">
+    <div class="eyebrow">Formazione AI & PA · Università e Conservatori</div>
+    <h1>Questionario di Valutazione Finale</h1>
+    <p class="subtitle">Verifica le tue conoscenze sui principi di governance, responsabilità e supervisione umana nell'uso dell'Intelligenza Artificiale nel settore pubblico.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h3>📝 10 Domande</h3>
+        <p>Quesiti a risposta multipla basati su scenari pratici e riferimenti normativi (AI Act).</p>
+      </div>
+      <div class="feature-card">
+        <h3>💡 Feedback Immediato</h3>
+        <p>Dopo ogni risposta, riceverai una spiegazione dettagliata per consolidare l'apprendimento.</p>
+      </div>
+      <div class="feature-card">
+        <h3>🏆 Risultato Finale</h3>
+        <p>Al termine, otterrai il tuo punteggio e un'analisi del tuo livello di padronanza della materia.</p>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="showRegistration()">Inizia</button>
+  </div>
+
+  <!-- ============ SCHERMATA 1 · REGISTRAZIONE ============ -->
+  <div id="screen-registration" class="card hidden" style="width:100%;">
+    <div class="eyebrow">Università e Conservatori</div>
+    <h1>Questionario Finale · Intelligenza Artificiale nella PA</h1>
+    <p class="subtitle">10 domande a risposta multipla. Al termine riceverai il punteggio e la spiegazione di ogni risposta.</p>
+
+    <label for="input-nome">Nome</label>
+    <input type="text" id="input-nome" placeholder="Il tuo nome" autocomplete="given-name">
+
+    <label for="input-cognome">Cognome</label>
+    <input type="text" id="input-cognome" placeholder="Il tuo cognome" autocomplete="family-name">
+
+    <label for="input-ente">Ente / Istituzione di appartenenza</label>
+    <input type="text" id="input-ente" placeholder="Es. Conservatorio di..., Università di..., Comune di...">
+
+    <div class="error-msg" id="registration-error"></div>
+
+    <button class="btn-primary" id="btn-start">Inizia il questionario</button>
+  </div>
+
+  <!-- ============ SCHERMATA 2 · QUIZ ============ -->
+  <div id="screen-quiz" class="card hidden" style="width:100%;">
+    <div class="progress-row">
+      <span class="progress-label" id="progress-label">Domanda 1 di 10</span>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:10%;"></div></div>
+    </div>
+
+    <div class="question-text" id="question-text"></div>
+    <div id="options-container"></div>
+
+    <div class="explanation-box hidden" id="explanation-box"></div>
+
+    <button class="btn-primary hidden" id="btn-next">Avanti →</button>
+  </div>
+
+  <!-- ============ SCHERMATA 3 · RISULTATI ============ -->
+  <div id="screen-results" class="card hidden" style="width:100%;">
+    <div class="score-circle">
+      <div class="score-num" id="result-score-num">0</div>
+      <div class="score-den">su 10</div>
+    </div>
+    <div class="level-badge" id="result-badge"></div>
+    <div class="recommendation" id="result-recommendation"></div>
+
+    <div class="save-status" id="save-status">Salvataggio in corso…</div>
+  </div>
+
+</div>
+
+<!-- ============ FOOTER GLOBALE ============ -->
+<footer>
+  © <span id="footer-year"></span> Avv. Adriana Augenti. Tutti i diritti riservati.
+</footer>
+
+<!-- ============ DASHBOARD (accessibile con ?admin=AA2026) ============ -->
+<div id="screen-admin-login" class="card hidden" style="max-width:420px; margin:0 auto;">
+  <div class="eyebrow">Area riservata</div>
+  <h1 style="font-size:1.3rem;">Dashboard risultati</h1>
+  <label for="input-passcode">Codice di accesso</label>
+  <input type="password" id="input-passcode" placeholder="Inserisci il codice">
+  <div class="error-msg" id="admin-error"></div>
+  <button class="btn-primary" id="btn-admin-login">Accedi</button>
+</div>
+
+<div id="screen-admin-dashboard" class="card dash-wrapper hidden" style="max-width:1000px; margin:0 auto;">
+  <div class="eyebrow">Area riservata</div>
+  <h1 style="font-size:1.3rem;">Risultati questionario · AI nella PA</h1>
+  <p class="subtitle" id="dash-summary">Caricamento…</p>
+  <div id="dash-table-wrapper"></div>
+  <div class="dash-actions">
+    <button class="btn-primary" id="btn-export-csv">Esporta CSV</button>
+    <button class="btn-secondary" id="btn-refresh">Aggiorna</button>
+  </div>
+</div>
+
+<script>
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyC2-JORZQWLPlPs2Xk4QndtkvnbbBhZ3M0",
+  authDomain: "questionario-ai-tempo2026.firebaseapp.com",
+  databaseURL: "https://questionario-ai-tempo2026-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "questionario-ai-tempo2026",
+  storageBucket: "questionario-ai-tempo2026.appspot.com",
+  messagingSenderId: "935480412400",
+  appId: "1:935480412400:web:f960c3a74dea38ed5d9a35"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COLLECTION_NAME = "risultati_quiz_ai_pa";
+
+// Codice di accesso alla dashboard — UNICO valore usato sia nell'URL
+// (?admin=...) sia nel campo password della schermata di login.
+// Cambialo prima di pubblicare, e ricordati di aggiornare qui il valore
+// se poi condividi un link diverso con te stessa.
+const ADMIN_PASSCODE = "AA2026";
+
+/* ======================================================================
+   CONTENUTO DEL QUESTIONARIO
+   ====================================================================== */
+const questions = [
+  {
+    question: "Quale affermazione descrive meglio un sistema di intelligenza artificiale?",
+    options: [
+      "Un software che esegue solo istruzioni fisse scritte dal programmatore",
+      "Un sistema che riconosce pattern nei dati e produce output sulla base di quei pattern",
+      "Un motore di ricerca che trova pagine web con parole chiave",
+      "Un database che conserva informazioni ordinate in tabelle"
+    ],
+    correct: 1,
+    explanation: "L'AI non \"pensa\" come una persona, ma elabora dati, riconosce associazioni statistiche e produce output probabilistici."
+  },
+  {
+    question: "Perché un output generato da un sistema AI non deve essere usato acriticamente in un procedimento amministrativo?",
+    options: [
+      "Perché è sempre errato",
+      "Perché può essere plausibile, ma non necessariamente corretto",
+      "Perché l'AI è vietata nella Pubblica Amministrazione",
+      "Perché può essere usato solo dal personale informatico"
+    ],
+    correct: 1,
+    explanation: "Il rischio principale non è che l'AI \"sbagli sempre\", ma che produca risposte fluenti e convincenti anche quando sono incomplete, imprecise o inventate."
+  },
+  {
+    question: "Quale tra questi è un esempio di uso dell'AI generativa nella PA?",
+    options: [
+      "Protocollare automaticamente un documento sulla base di una regola fissa",
+      "Scrivere una bozza di email o una FAQ a partire da istruzioni fornite dall'utente",
+      "Aprire un file PDF archiviato in una cartella",
+      "Ordinare alfabeticamente un elenco di studenti"
+    ],
+    correct: 1,
+    explanation: "L'AI generativa produce nuovi contenuti: testi, sintesi, risposte, bozze di comunicazioni, FAQ o analisi documentali."
+  },
+  {
+    question: "Secondo la logica dell'AI Act, da cosa dipende principalmente il livello di rischio di un sistema AI?",
+    options: [
+      "Dal nome commerciale del prodotto",
+      "Dal costo del software",
+      "Dalla destinazione d'uso e dall'impatto su salute, sicurezza e diritti fondamentali",
+      "Dal fatto che il sistema sia installato su server pubblici o privati"
+    ],
+    correct: 2,
+    explanation: "L'AI Act adotta un approccio basato sul rischio: più un sistema può incidere su diritti, sicurezza o posizioni individuali, più stringenti sono gli obblighi."
+  },
+  {
+    question: "Quale obbligo dell'AI Act riguarda in modo trasversale tutto il personale che utilizza o gestisce sistemi AI?",
+    options: [
+      "L'obbligo di certificare ogni software",
+      "L'obbligo di alfabetizzazione AI",
+      "L'obbligo di usare solo sistemi open source",
+      "L'obbligo di nominare sempre un nuovo DPO"
+    ],
+    correct: 1,
+    explanation: "L'alfabetizzazione AI è un obbligo generale: le persone devono comprendere almeno rischi, limiti e corrette modalità d'uso degli strumenti."
+  },
+  {
+    question: "In un'università o conservatorio, quale caso richiede particolare cautela prima dell'adozione di un sistema AI?",
+    options: [
+      "Un chatbot che indica gli orari di apertura degli uffici",
+      "Un sistema che ordina automaticamente candidati in una graduatoria di ammissione",
+      "Un correttore ortografico usato per revisionare testi interni",
+      "Un sistema che traduce una pagina informativa già pubblicata"
+    ],
+    correct: 1,
+    explanation: "L'ammissione, le graduatorie, i benefici, la carriera e le valutazioni incidono su posizioni individuali rilevanti e non possono essere trattati come semplici attività organizzative."
+  },
+  {
+    question: "Quale tra questi è un criterio favorevole all'automazione di una fase procedimentale?",
+    options: [
+      "Alta discrezionalità e valutazioni caso per caso",
+      "Dati scarsi, incompleti o distorti",
+      "Regole chiare, dati strutturati e basso impatto sui diritti",
+      "Forte componente relazionale o di equità"
+    ],
+    correct: 2,
+    explanation: "Sono più automatizzabili le attività frequenti, ripetitive, basate su regole chiare e dati affidabili, purché resti possibile una supervisione effettiva."
+  },
+  {
+    question: "Quando la supervisione umana può dirsi davvero significativa?",
+    options: [
+      "Quando una persona firma automaticamente l'esito prodotto dal sistema",
+      "Quando una persona può comprendere, verificare, modificare o bloccare l'output del sistema",
+      "Quando il sistema è stato acquistato con fondi pubblici",
+      "Quando il fornitore dichiara che il sistema è conforme"
+    ],
+    correct: 1,
+    explanation: "La supervisione non è un timbro formale. Deve consentire un controllo reale, con possibilità concreta di intervento, motivazione e tracciabilità."
+  },
+  {
+    question: "Chi risponde dell'uso di un sistema AI adottato da una Pubblica Amministrazione?",
+    options: [
+      "Solo il fornitore, perché ha sviluppato il sistema",
+      "Solo l'ufficio informatico, perché gestisce la tecnologia",
+      "L'ente che lo usa, in quanto deployer, insieme ai soggetti che assumono o validano le decisioni",
+      "Nessuno, se il sistema è classificato come AI"
+    ],
+    correct: 2,
+    explanation: "La responsabilità non si trasferisce automaticamente al fornitore. L'ente risponde dell'adozione, dell'uso, della supervisione e della gestione degli errori."
+  },
+  {
+    question: "Quale misura è più coerente con una buona governance dell'AI nell'ente?",
+    options: [
+      "Lasciare ogni ufficio libero di sperimentare strumenti AI in autonomia",
+      "Vietare ogni uso dell'AI, anche per attività a basso rischio",
+      "Definire policy, ruoli, registro dei sistemi, valutazioni di rischio, log, formazione e procedure di escalation",
+      "Affidarsi alla dichiarazione commerciale del fornitore senza ulteriori verifiche"
+    ],
+    correct: 2,
+    explanation: "La governance non serve a bloccare l'innovazione, ma a renderla controllabile: policy, ruoli, tracciabilità, formazione e presidi multidisciplinari sono essenziali."
+  }
+];
+
+/* ======================================================================
+   STATO APPLICAZIONE
+   ====================================================================== */
+let participant = { nome: "", cognome: "", ente: "" };
+let currentIndex = 0;
+let score = 0;
+let answerLog = []; // { domanda, rispostaData, corretta, rispostaCorretta }
+
+const el = (id) => document.getElementById(id);
+
+el("footer-year").textContent = new Date().getFullYear();
+/* ======================================================================
+   SCHERMATA 0 · LANDING PAGE
+   ====================================================================== */
+function showRegistration(){
+  el("screen-landing").classList.add("hidden");
+  el("screen-registration").classList.remove("hidden");
+}
+/* ======================================================================
+   SCHERMATA 1 · REGISTRAZIONE
+   ====================================================================== */
+el("btn-start").addEventListener("click", () => {
+  const nome = el("input-nome").value.trim();
+  const cognome = el("input-cognome").value.trim();
+  const ente = el("input-ente").value.trim();
+
+  if (!nome || !cognome || !ente) {
+    el("registration-error").textContent = "Compila tutti i campi per proseguire.";
+    return;
+  }
+
+  participant = { nome, cognome, ente };
+  el("registration-error").textContent = "";
+  el("screen-registration").classList.add("hidden");
+  el("screen-quiz").classList.remove("hidden");
+  renderQuestion();
+});
+
+/* ======================================================================
+   SCHERMATA 2 · QUIZ
+   ====================================================================== */
+function renderQuestion(){
+  const q = questions[currentIndex];
+  el("question-text").textContent = q.question;
+  el("progress-label").textContent = `Domanda ${currentIndex + 1} di ${questions.length}`;
+  el("progress-fill").style.width = `${((currentIndex + 1) / questions.length) * 100}%`;
+
+  const container = el("options-container");
+  container.innerHTML = "";
+
+  q.options.forEach((optionText, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "option";
+    btn.textContent = optionText;
+    btn.addEventListener("click", () => handleAnswer(idx));
+    container.appendChild(btn);
+  });
+
+  el("explanation-box").classList.add("hidden");
+  el("btn-next").classList.add("hidden");
+}
+
+function handleAnswer(selectedIdx){
+  const q = questions[currentIndex];
+  const optionButtons = el("options-container").querySelectorAll(".option");
+
+  optionButtons.forEach((btn, idx) => {
+    btn.disabled = true;
+    if (idx === q.correct) btn.classList.add("correct");
+    else if (idx === selectedIdx) btn.classList.add("incorrect");
+  });
+
+  const isCorrect = selectedIdx === q.correct;
+  if (isCorrect) score++;
+
+  answerLog.push({
+    domanda: q.question,
+    rispostaData: q.options[selectedIdx],
+    corretta: isCorrect,
+    rispostaCorretta: q.options[q.correct]
+  });
+
+  const box = el("explanation-box");
+  box.innerHTML = `<strong>${isCorrect ? "✅ Corretto." : "❌ Non corretto."}</strong><br>${q.explanation}`;
+  box.classList.remove("hidden");
+
+  const nextBtn = el("btn-next");
+  nextBtn.textContent = currentIndex < questions.length - 1 ? "Avanti →" : "Vedi il risultato";
+  nextBtn.classList.remove("hidden");
+}
+
+el("btn-next").addEventListener("click", () => {
+  currentIndex++;
+  if (currentIndex < questions.length) {
+    renderQuestion();
+  } else {
+    showResults();
+  }
+});
+
+/* ======================================================================
+   SCHERMATA 3 · RISULTATI
+   ====================================================================== */
+function showResults(){
+  el("screen-quiz").classList.add("hidden");
+  el("screen-results").classList.remove("hidden");
+
+  el("result-score-num").textContent = score;
+
+  const badge = el("result-badge");
+  const rec = el("result-recommendation");
+
+  if (score >= 9) {
+    badge.textContent = "Eccellente";
+    badge.className = "level-badge excellent";
+    rec.textContent = "Padronanza solida dei concetti chiave di AI Act e governance dell'AI nella PA.";
+  } else if (score >= 7) {
+    badge.textContent = "Buono";
+    badge.className = "level-badge good";
+    rec.textContent = "Buona comprensione generale, con qualche margine di approfondimento.";
+  } else if (score >= 5) {
+    badge.textContent = "Sufficiente";
+    badge.className = "level-badge sufficient";
+    rec.textContent = "Le basi ci sono: rivedi i concetti di rischio, supervisione umana e responsabilità.";
+  } else {
+    badge.textContent = "Da approfondire";
+    badge.className = "level-badge review";
+    rec.textContent = "Ti consigliamo di rivedere il materiale del corso prima di applicare questi concetti operativamente.";
+  }
+
+  saveResultToFirestore();
+}
+
+function saveResultToFirestore(){
+  const statusEl = el("save-status");
+  db.collection(COLLECTION_NAME).add({
+    nome: participant.nome,
+    cognome: participant.cognome,
+    ente: participant.ente,
+    punteggio: score,
+    totaleDomande: questions.length,
+    dettaglioRisposte: answerLog,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(() => {
+    statusEl.textContent = "Risultato salvato correttamente.";
+  })
+  .catch((err) => {
+    console.error("Errore salvataggio Firestore:", err);
+    statusEl.textContent = "⚠️ Non è stato possibile salvare il risultato. Segnala questo errore.";
+  });
+}
+
+/* ======================================================================
+   DASHBOARD (?admin=AA2026)
+   ====================================================================== */
+function initAdminIfRequested(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("admin") !== ADMIN_PASSCODE) return;
+
+  document.querySelector(".app-container").classList.add("hidden");
+  el("screen-admin-login").classList.remove("hidden");
+}
+
+el("btn-admin-login")?.addEventListener("click", () => {
+  const code = el("input-passcode").value;
+  if (code !== ADMIN_PASSCODE) {
+    el("admin-error").textContent = "Codice non valido.";
+    return;
+  }
+  el("screen-admin-login").classList.add("hidden");
+  el("screen-admin-dashboard").classList.remove("hidden");
+  loadDashboardData();
+});
+
+let cachedResults = [];
+
+function loadDashboardData(){
+  el("dash-summary").textContent = "Caricamento…";
+  db.collection(COLLECTION_NAME).orderBy("timestamp", "desc").get()
+    .then((snapshot) => {
+      cachedResults = [];
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        cachedResults.push({
+          nome: d.nome || "",
+          cognome: d.cognome || "",
+          ente: d.ente || "",
+          punteggio: d.punteggio,
+          totale: d.totaleDomande,
+          data: d.timestamp ? d.timestamp.toDate().toLocaleString("it-IT") : ""
+        });
+      });
+      renderDashboardTable();
+    })
+    .catch((err) => {
+      console.error("Errore lettura Firestore:", err);
+      el("dash-summary").textContent =
+        "⚠️ Errore nella lettura dei dati. Controlla le regole di sicurezza Firestore (serve 'allow read' per la dashboard).";
+    });
+}
+
+function renderDashboardTable(){
+  el("dash-summary").textContent = `${cachedResults.length} partecipanti registrati.`;
+
+  const wrapper = el("dash-table-wrapper");
+  if (cachedResults.length === 0) {
+    wrapper.innerHTML = "<p style='color:var(--grigio); margin-top:1rem;'>Nessun risultato ancora disponibile.</p>";
+    return;
+  }
+
+  let html = "<table><thead><tr><th>Nome</th><th>Cognome</th><th>Ente</th><th>Punteggio</th><th>Data</th></tr></thead><tbody>";
+  cachedResults.forEach((r) => {
+    html += `<tr><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.cognome)}</td><td>${escapeHtml(r.ente)}</td><td>${r.punteggio}/${r.totale}</td><td>${r.data}</td></tr>`;
+  });
+  html += "</tbody></table>";
+  wrapper.innerHTML = html;
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+el("btn-refresh")?.addEventListener("click", loadDashboardData);
+
+el("btn-export-csv")?.addEventListener("click", () => {
+  if (cachedResults.length === 0) return;
+
+  const headers = ["Nome", "Cognome", "Ente", "Punteggio", "Totale", "Data"];
+  const rows = cachedResults.map(r => [r.nome, r.cognome, r.ente, r.punteggio, r.totale, r.data]);
+
+  let csv = headers.join(";") + "\n";
+  rows.forEach(row => {
+    csv += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(";") + "\n";
+  });
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `risultati_quiz_ai_pa_${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+});
+
+/* ======================================================================
+   AVVIO
+   ====================================================================== */
+initAdminIfRequested();
+</script>
+</body>
+</html>
