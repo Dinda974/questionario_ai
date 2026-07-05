@@ -173,6 +173,13 @@
     font-size: 0.8rem;
     margin-bottom: 0.4rem;
   }
+  .privacy-note a{
+    color: var(--ambra);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .privacy-note a:hover{ text-decoration: underline; }
 
   /* ---------- QUIZ ---------- */
   .progress-row{
@@ -364,13 +371,10 @@
     </div>
 
     <div class="privacy-note">
-      <strong>ℹ️ Informativa privacy essenziale</strong>
-      I dati raccolti (nome, cognome, ente/istituzione, risposte e punteggio) sono trattati da
-      [TITOLARE DEL TRATTAMENTO] esclusivamente per finalità di verifica dell'apprendimento nell'ambito
-      del percorso formativo, su base [BASE GIURIDICA — es. esecuzione di un compito di interesse pubblico /
-      consenso]. I dati sono conservati per [PERIODO DI CONSERVAZIONE] e non sono comunicati a terzi al
-      di fuori di [EVENTUALI DESTINATARI]. È possibile esercitare i diritti di cui agli artt. 15-22 GDPR
-      scrivendo a [CONTATTO DPO/TITOLARE].
+      <strong>ℹ️ Informativa privacy essenziale (art. 13 GDPR)</strong>
+      I dati raccolti (nome, cognome, ente/istituzione, risposte e punteggio) sono trattati da Avv.ta Adriana
+      Augenti per finalità di verifica finale dell'apprendimento nell'ambito del percorso formativo.
+      <a href="privacy.html" target="_blank" rel="noopener">Leggi l'informativa completa →</a>
     </div>
 
     <button class="btn-primary" onclick="showRegistration()">Inizia</button>
@@ -428,7 +432,7 @@
 
 <!-- ============ FOOTER GLOBALE ============ -->
 <footer>
-  © <span id="footer-year"></span> Avv. Adriana Augenti. Tutti i diritti riservati.
+  © <span id="footer-year"></span> Avv.ta Adriana Augenti. Tutti i diritti riservati.
 </footer>
 
 <!-- ============ DASHBOARD (accessibile con ?admin=AA2026) ============ -->
