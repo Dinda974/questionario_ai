@@ -392,6 +392,7 @@
     <div class="recommendation" id="result-recommendation"></div>
 
     <div class="save-status" id="save-status">Salvataggio in corso…</div>
+    <button class="btn-secondary hidden" id="btn-download-result">⬇ Scarica il tuo risultato</button>
   </div>
 
 </div>
@@ -739,12 +740,36 @@ function saveResultToFirestore(){
     .catch((err) => {
       console.error("Errore salvataggio Firestore:", err);
       if (err && err.message === "timeout") {
-        statusEl.textContent = "⚠️ Il salvataggio sta impiegando troppo tempo (probabile rete dell'ente che blocca la connessione). Il tuo risultato è stato comunque conservato in locale: segnala questo messaggio.";
+        statusEl.textContent = "⚠️ Il salvataggio sta impiegando troppo tempo (probabile rete dell'ente che blocca la connessione). Scarica il tuo risultato qui sotto e comunicalo manualmente al referente.";
       } else {
-        statusEl.textContent = "⚠️ Non è stato possibile salvare il risultato. Segnala questo errore.";
+        statusEl.textContent = "⚠️ Non è stato possibile salvare il risultato. Scarica il tuo risultato qui sotto e comunicalo manualmente al referente.";
       }
+      el("btn-download-result").classList.remove("hidden");
     });
 }
+
+function downloadOwnResult(){
+  const lines = [
+    `Nome: ${participant.nome}`,
+    `Cognome: ${participant.cognome}`,
+    `Ente: ${participant.ente}`,
+    `Punteggio: ${score}/${questions.length}`,
+    `Data: ${new Date().toLocaleString("it-IT")}`,
+    "",
+    "Dettaglio risposte:",
+    ...answerLog.map((a, i) =>
+      `${i + 1}. ${a.domanda}\n   Risposta data: ${a.rispostaData} (${a.corretta ? "corretta" : "errata"})\n   Risposta corretta: ${a.rispostaCorretta}`
+    )
+  ];
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `risultato_${participant.cognome || "quiz"}_${new Date().toISOString().slice(0,10)}.txt`;
+  link.click();
+}
+
+el("btn-download-result").addEventListener("click", downloadOwnResult);
 
 /* ======================================================================
    DASHBOARD (?admin=AA2026)
