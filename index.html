@@ -421,7 +421,7 @@
     <div class="recommendation" id="result-recommendation"></div>
 
     <div class="save-status" id="save-status">Salvataggio in corso…</div>
-    <button class="btn-secondary hidden" id="btn-download-result">⬇ Scarica il tuo risultato</button>
+    <button class="btn-secondary hidden" id="btn-download-result">⬇ Scarica il tuo risultato in PDF</button>
   </div>
 
 </div>
@@ -724,9 +724,11 @@ function showResults(){
     rec.textContent = "Ti consigliamo di rivedere il materiale del corso prima di applicare questi concetti operativamente.";
   }
 
+  el("btn-download-result").classList.remove("hidden");
   saveResultToFirestore();
 }
 
+let saveSucceeded = false;
 const SAVE_TIMEOUT_MS = 10000;
 
 function backupResultLocally(){
@@ -767,6 +769,7 @@ function saveResultToFirestore(){
 
   Promise.race([writePromise, timeoutPromise])
     .then(() => {
+      saveSucceeded = true;
       statusEl.textContent = "✅ Risultato salvato correttamente.";
     })
     .catch((err) => {
@@ -774,8 +777,7 @@ function saveResultToFirestore(){
       const motivo = err && err.message === "timeout"
         ? "il salvataggio sta impiegando troppo tempo (probabile rete dell'ente che blocca la connessione)"
         : "non è stato possibile salvare il risultato";
-      statusEl.innerHTML = `⚠️ Attenzione: ${motivo}. Clicca il pulsante qui sotto per scaricare il tuo risultato e inviarlo alla persona che gestisce il corso.`;
-      el("btn-download-result").classList.remove("hidden");
+      statusEl.innerHTML = `⚠️ Attenzione: ${motivo}. Scarica il tuo risultato qui sotto e invialo alla persona che gestisce il corso.`;
     });
 }
 
@@ -819,7 +821,7 @@ function downloadOwnResult(){
 
   heading("Questionario Finale · Intelligenza Artificiale nella PA", 15, BLU);
   body(`${participant.nome} ${participant.cognome} · ${participant.ente}`, 11, GRIGIO);
-  body(`Generato il ${new Date().toLocaleString("it-IT")} · Salvataggio automatico non riuscito`, 9, GRIGIO);
+  body(`Generato il ${new Date().toLocaleString("it-IT")}`, 9, GRIGIO);
   y += 2;
   heading(`Punteggio: ${score}/${questions.length}`, 13, score >= 7 ? VERDE : ROSSO);
   y += 3;
@@ -836,7 +838,7 @@ function downloadOwnResult(){
 
 el("btn-download-result").addEventListener("click", () => {
   downloadOwnResult(); // PDF leggibile per il partecipante
-  downloadImportBackup(); // JSON tecnico per il reimport in dashboard
+  if (!saveSucceeded) downloadImportBackup(); // JSON tecnico per il reimport, solo se il salvataggio automatico è fallito
 });
 
 /* ======================================================================
