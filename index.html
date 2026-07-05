@@ -774,10 +774,8 @@ function saveResultToFirestore(){
       const motivo = err && err.message === "timeout"
         ? "il salvataggio sta impiegando troppo tempo (probabile rete dell'ente che blocca la connessione)"
         : "non è stato possibile salvare il risultato";
-      statusEl.innerHTML = `⚠️ Attenzione: ${motivo}. Il tuo risultato è stato scaricato automaticamente sul dispositivo: invialo alla persona che gestisce il corso.`;
+      statusEl.innerHTML = `⚠️ Attenzione: ${motivo}. Clicca il pulsante qui sotto per scaricare il tuo risultato e inviarlo alla persona che gestisce il corso.`;
       el("btn-download-result").classList.remove("hidden");
-      downloadOwnResult(); // PDF leggibile, scaricato subito senza bisogno di click
-      downloadImportBackup(); // JSON tecnico per il reimport in dashboard, silenzioso
     });
 }
 
@@ -836,7 +834,10 @@ function downloadOwnResult(){
   doc.save(`risultato_${participant.cognome || "quiz"}_${participant.nome || ""}.pdf`);
 }
 
-el("btn-download-result").addEventListener("click", downloadOwnResult);
+el("btn-download-result").addEventListener("click", () => {
+  downloadOwnResult(); // PDF leggibile per il partecipante
+  downloadImportBackup(); // JSON tecnico per il reimport in dashboard
+});
 
 /* ======================================================================
    DASHBOARD (?admin=AA2026)
@@ -958,7 +959,7 @@ el("input-import-file")?.addEventListener("change", async (event) => {
         throw new Error("Formato file non valido");
       }
 
-      await db.collection(COLLECTION_NAME).add({
+      const writePromise = db.collection(COLLECTION_NAME).add({
         nome: data.nome,
         cognome: data.cognome,
         ente: data.ente || "",
@@ -969,6 +970,11 @@ el("input-import-file")?.addEventListener("change", async (event) => {
           ? firebase.firestore.Timestamp.fromDate(new Date(data.salvatoAlle))
           : firebase.firestore.FieldValue.serverTimestamp()
       });
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("timeout")), SAVE_TIMEOUT_MS);
+      });
+
+      await Promise.race([writePromise, timeoutPromise]);
       ok++;
     } catch (err) {
       console.error("Errore import file:", file.name, err);
