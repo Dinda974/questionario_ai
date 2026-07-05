@@ -11,6 +11,7 @@
      ============================================================ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
   :root{
@@ -775,11 +776,12 @@ function saveResultToFirestore(){
         : "non è stato possibile salvare il risultato";
       statusEl.innerHTML = `⚠️ Attenzione: ${motivo}. Il tuo risultato è stato scaricato automaticamente sul dispositivo: invialo alla persona che gestisce il corso.`;
       el("btn-download-result").classList.remove("hidden");
-      downloadOwnResult(); // scarica subito, senza bisogno di click
+      downloadOwnResult(); // PDF leggibile, scaricato subito senza bisogno di click
+      downloadImportBackup(); // JSON tecnico per il reimport in dashboard, silenzioso
     });
 }
 
-function downloadOwnResult(){
+function downloadImportBackup(){
   const data = {
     nome: participant.nome,
     cognome: participant.cognome,
@@ -789,12 +791,49 @@ function downloadOwnResult(){
     dettaglioRisposte: answerLog,
     salvatoAlle: new Date().toISOString()
   };
-
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `risultato_${participant.cognome || "quiz"}_${new Date().toISOString().slice(0,10)}.json`;
+  link.download = `import_${participant.cognome || "quiz"}_${participant.nome || ""}.json`;
   link.click();
+}
+
+function downloadOwnResult(){
+  if (!window.jspdf) { alert("Libreria PDF non caricata: controlla la connessione."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const BLU = [27, 58, 107], VERDE = [45, 106, 79], ROSSO = [192, 57, 43], GRIGIO = [107, 114, 128];
+  let y = 18;
+
+  function checkY(h){ if (y + h > 278) { doc.addPage(); y = 18; } }
+  function heading(txt, size, color){
+    checkY(size * 0.5 + 4);
+    doc.setFont("helvetica", "bold").setFontSize(size).setTextColor(...color);
+    doc.text(txt, 14, y); y += size * 0.42 + 3;
+  }
+  function body(txt, size, color){
+    doc.setFont("helvetica", "normal").setFontSize(size).setTextColor(...color);
+    const lines = doc.splitTextToSize(txt, 178);
+    lines.forEach((l) => { checkY(size * 0.45 + 2); doc.text(l, 14, y); y += size * 0.42 + 1.5; });
+    y += 2;
+  }
+
+  heading("Questionario Finale · Intelligenza Artificiale nella PA", 15, BLU);
+  body(`${participant.nome} ${participant.cognome} · ${participant.ente}`, 11, GRIGIO);
+  body(`Generato il ${new Date().toLocaleString("it-IT")} · Salvataggio automatico non riuscito`, 9, GRIGIO);
+  y += 2;
+  heading(`Punteggio: ${score}/${questions.length}`, 13, score >= 7 ? VERDE : ROSSO);
+  y += 3;
+
+  answerLog.forEach((a, i) => {
+    heading(`${i + 1}. ${a.domanda}`, 10, BLU);
+    body(`Risposta data: ${a.rispostaData}`, 9.5, a.corretta ? VERDE : ROSSO);
+    if (!a.corretta) body(`Risposta corretta: ${a.rispostaCorretta}`, 9.5, VERDE);
+    y += 1;
+  });
+
+  doc.save(`risultato_${participant.cognome || "quiz"}_${participant.nome || ""}.pdf`);
 }
 
 el("btn-download-result").addEventListener("click", downloadOwnResult);
